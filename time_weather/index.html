@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>時間與天氣</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+      color: #172033;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.8), transparent 35%),
+        linear-gradient(135deg, #dff3ff, #eef0ff 55%, #f7eaff);
+    }
+    .card {
+      width: min(92vw, 520px);
+      padding: 32px;
+      border: 1px solid rgba(255,255,255,.65);
+      border-radius: 28px;
+      background: rgba(255,255,255,.66);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 60px rgba(50,65,100,.16);
+    }
+    .eyebrow {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      color: #68728a;
+      text-transform: uppercase;
+    }
+    #time {
+      margin-top: 8px;
+      font-size: clamp(48px, 13vw, 76px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.05em;
+    }
+    #date {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #626c80;
+    }
+    .divider {
+      height: 1px;
+      background: rgba(70,80,110,.12);
+      margin: 28px 0;
+    }
+    .weather {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .location {
+      font-size: 16px;
+      font-weight: 700;
+      color: #586176;
+    }
+    .condition {
+      margin-top: 5px;
+      font-size: 20px;
+      font-weight: 750;
+    }
+    .temp {
+      font-size: 54px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      white-space: nowrap;
+    }
+    .details {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .detail {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.55);
+    }
+    .detail span {
+      display: block;
+      font-size: 13px;
+      color: #7a8499;
+    }
+    .detail strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 18px;
+    }
+    #status {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #7b8498;
+    }
+    button {
+      margin-top: 14px;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 15px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      background: #172033;
+      color: white;
+    }
+    button:hover { opacity: .88; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow">現在時間</div>
+    <div id="time">--:--:--</div>
+    <div id="date">讀取中…</div>
+
+    <div class="divider"></div>
+
+    <section class="weather">
+      <div>
+        <div class="location" id="location">正在取得位置…</div>
+        <div class="condition" id="condition">讀取天氣中…</div>
+      </div>
+      <div class="temp" id="temperature">--°</div>
+    </section>
+
+    <div class="details">
+      <div class="detail">
+        <span>體感溫度</span>
+        <strong id="feels">--°C</strong>
+      </div>
+      <div class="detail">
+        <span>風速</span>
+        <strong id="wind">-- km/h</strong>
+      </div>
+    </div>
+
+    <div id="status">天氣資料來源：Open-Meteo</div>
+    <button id="refresh">更新天氣</button>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function updateClock() {
+    const now = new Date();
+    $("time").textContent = new Intl.DateTimeFormat("zh-TW", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+    }).format(now);
+    $("date").textContent = new Intl.DateTimeFormat("zh-TW", {
+      year: "numeric", month: "long", day: "numeric", weekday: "long"
+    }).format(now);
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  const weatherText = {
+    0:"晴朗", 1:"大致晴朗", 2:"局部多雲", 3:"陰天",
+    45:"有霧", 48:"霧凇",
+    51:"毛毛雨", 53:"毛毛雨", 55:"較強毛毛雨",
+    56:"凍毛毛雨", 57:"強凍毛毛雨",
+    61:"小雨", 63:"中雨", 65:"大雨",
+    66:"凍雨", 67:"強凍雨",
+    71:"小雪", 73:"中雪", 75:"大雪", 77:"雪粒",
+    80:"陣雨", 81:"較強陣雨", 82:"猛烈陣雨",
+    85:"陣雪", 86:"強陣雪",
+    95:"雷雨", 96:"雷雨伴冰雹", 99:"強雷雨伴冰雹"
+  };
+
+  async function loadWeather(lat, lon, label) {
+    try {
+      $("status").textContent = "正在更新天氣…";
+      const url = new URL("https://api.open-meteo.com/v1/forecast");
+      url.searchParams.set("latitude", lat);
+      url.searchParams.set("longitude", lon);
+      url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,wind_speed_10m");
+      url.searchParams.set("timezone", "auto");
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("天氣服務回應失敗");
+      const data = await res.json();
+      const w = data.current;
+
+      $("location").textContent = label;
+      $("condition").textContent = weatherText[w.weather_code] ?? `天氣代碼 ${w.weather_code}`;
+      $("temperature").textContent = `${Math.round(w.temperature_2m)}°`;
+      $("feels").textContent = `${Math.round(w.apparent_temperature)}°C`;
+      $("wind").textContent = `${Math.round(w.wind_speed_10m)} km/h`;
+      $("status").textContent = `最後更新：${new Date().toLocaleTimeString("zh-TW")} · Open-Meteo`;
+    } catch (err) {
+      $("condition").textContent = "無法取得天氣";
+      $("status").textContent = err.message;
+    }
+  }
+
+  function getWeather() {
+    if ("geolocation" in navigator) {
+      $("location").textContent = "正在取得目前位置…";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          loadWeather(latitude, longitude, "目前位置");
+        },
+        () => loadWeather(25.0330, 121.5654, "台北（預設）"),
+        { enableHighAccuracy: false, timeout: 7000 }
+      );
+    } else {
+      loadWeather(25.0330, 121.5654, "台北（預設）");
+    }
+  }
+
+  $("refresh").addEventListener("click", getWeather);
+  getWeather();
+</script>
+</body>
+</html>
