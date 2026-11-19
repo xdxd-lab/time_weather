@@ -41,6 +41,8 @@
 - 測試資料請用 `tests/helpers/fixtures.js` 的建構函式，形狀要符合真實 API 回應。
 - `tests/markup.test.js` 檢查 HTML 與程式碼之間的契約（元素 id、CSP、資料來源標示、相對路徑）。改 HTML 結構時請一起更新。
 - 覆蓋率門檻：行 95%、分支 85%、函式 90%（`npm run test:coverage`，CI 會強制檢查）。
+- 端對端測試放在 `e2e/**/*.spec.js`，以 Playwright 在 Chromium 執行（`npm run test:e2e`）。所有 Open-Meteo 請求都以 `tests/helpers/fixtures.js` 的資料回應，其他對外請求會直接讓測試失敗；頁面錯誤、主控台錯誤與 CSP 違規也會讓測試失敗。
+- 改到控制器、搜尋元件或版面時，請補上對應的端對端測試。本機沒有安裝瀏覽器時可以只靠 CI 執行，失敗時從 Actions 下載 `playwright-report` 檢視追蹤紀錄與截圖。
 
 ## Commit 訊息
 
