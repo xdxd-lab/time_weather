@@ -1,220 +1,250 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>時間與天氣</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
-      color: #172033;
-      background:
-        radial-gradient(circle at top left, rgba(255,255,255,.8), transparent 35%),
-        linear-gradient(135deg, #dff3ff, #eef0ff 55%, #f7eaff);
-    }
-    .card {
-      width: min(92vw, 520px);
-      padding: 32px;
-      border: 1px solid rgba(255,255,255,.65);
-      border-radius: 28px;
-      background: rgba(255,255,255,.66);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 20px 60px rgba(50,65,100,.16);
-    }
-    .eyebrow {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: .12em;
-      color: #68728a;
-      text-transform: uppercase;
-    }
-    #time {
-      margin-top: 8px;
-      font-size: clamp(48px, 13vw, 76px);
-      font-weight: 800;
-      line-height: 1;
-      letter-spacing: -.05em;
-    }
-    #date {
-      margin-top: 10px;
-      font-size: 18px;
-      color: #626c80;
-    }
-    .divider {
-      height: 1px;
-      background: rgba(70,80,110,.12);
-      margin: 28px 0;
-    }
-    .weather {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-    .location {
-      font-size: 16px;
-      font-weight: 700;
-      color: #586176;
-    }
-    .condition {
-      margin-top: 5px;
-      font-size: 20px;
-      font-weight: 750;
-    }
-    .temp {
-      font-size: 54px;
-      font-weight: 800;
-      letter-spacing: -.04em;
-      white-space: nowrap;
-    }
-    .details {
-      margin-top: 20px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-    .detail {
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.55);
-    }
-    .detail span {
-      display: block;
-      font-size: 13px;
-      color: #7a8499;
-    }
-    .detail strong {
-      display: block;
-      margin-top: 4px;
-      font-size: 18px;
-    }
-    #status {
-      margin-top: 18px;
-      font-size: 13px;
-      color: #7b8498;
-    }
-    button {
-      margin-top: 14px;
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 15px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      background: #172033;
-      color: white;
-    }
-    button:hover { opacity: .88; }
-  </style>
-</head>
-<body>
-  <main class="card">
-    <div class="eyebrow">現在時間</div>
-    <div id="time">--:--:--</div>
-    <div id="date">讀取中…</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com; manifest-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>時間與天氣 · Time Weather</title>
+    <meta
+      name="description"
+      content="即時時鐘與天氣：目前天氣、未來 24 小時與 7 日預報，支援城市搜尋、定位與攝氏／華氏切換。免安裝，打開瀏覽器即可使用。"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      content="#dff3ff"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#111a2e"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta property="og:site_name" content="Time Weather" />
+    <meta property="og:title" content="何妨吟嘯且徐行 · 時間與天氣" />
+    <meta
+      property="og:description"
+      content="即時時鐘、目前天氣、24 小時與 7 日預報。免安裝，打開即用。"
+    />
+    <meta property="og:url" content="https://xdxd-lab.github.io/time_weather/" />
+    <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+    <script type="module" src="src/main.js"></script>
+  </head>
+  <body data-sky="clear" data-daylight="day">
+    <a class="skip-link" href="#main">跳到主要內容</a>
 
-    <div class="divider"></div>
-
-    <section class="weather">
-      <div>
-        <div class="location" id="location">正在取得位置…</div>
-        <div class="condition" id="condition">讀取天氣中…</div>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-mark"
+          src="assets/icons/icon.svg"
+          alt=""
+          width="36"
+          height="36"
+        />
+        <div>
+          <h1 class="brand-name">何妨吟嘯且徐行</h1>
+          <p class="brand-sub">Time Weather</p>
+        </div>
       </div>
-      <div class="temp" id="temperature">--°</div>
-    </section>
 
-    <div class="details">
-      <div class="detail">
-        <span>體感溫度</span>
-        <strong id="feels">--°C</strong>
+      <div class="toolbar">
+        <form id="search-form" class="search" role="search" novalidate>
+          <label class="visually-hidden" for="search-input">搜尋城市</label>
+          <svg class="search-glyph" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m15.5 15.5 5 5" />
+          </svg>
+          <input
+            id="search-input"
+            class="search-input"
+            type="search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="search-results"
+            aria-describedby="search-message"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            maxlength="80"
+            placeholder="搜尋城市"
+            title="輸入城市名稱，例如：高雄、Tokyo"
+          />
+          <div id="search-panel" class="search-panel" hidden>
+            <ul
+              id="search-results"
+              class="search-results"
+              role="listbox"
+              aria-label="搜尋結果"
+            ></ul>
+            <p id="search-message" class="search-message" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <button
+          id="locate-button"
+          class="icon-button"
+          type="button"
+          aria-label="使用目前位置"
+          title="使用目前位置"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.5 11.2 20 4l-7.2 16.5-1.9-7.4Z" />
+          </svg>
+        </button>
+
+        <div class="segmented" role="group" aria-label="溫度單位">
+          <button
+            id="units-metric"
+            type="button"
+            data-units="metric"
+            aria-pressed="true"
+            aria-label="攝氏"
+          >
+            °C
+          </button>
+          <button
+            id="units-imperial"
+            type="button"
+            data-units="imperial"
+            aria-pressed="false"
+            aria-label="華氏"
+          >
+            °F
+          </button>
+        </div>
       </div>
-      <div class="detail">
-        <span>風速</span>
-        <strong id="wind">-- km/h</strong>
-      </div>
-    </div>
+    </header>
 
-    <div id="status">天氣資料來源：Open-Meteo</div>
-    <button id="refresh">更新天氣</button>
-  </main>
+    <main id="main" class="layout" tabindex="-1">
+      <section
+        id="hero"
+        class="card hero"
+        aria-labelledby="place-name"
+        aria-busy="true"
+      >
+        <p class="eyebrow">
+          <span id="clock-label">現在時間</span>
+          <span id="clock-zone" class="zone"></span>
+        </p>
+        <p id="clock-time" class="clock-time">--:--:--</p>
+        <p id="clock-date" class="clock-date">讀取中…</p>
 
-<script>
-  const $ = (id) => document.getElementById(id);
+        <div class="divider" role="presentation"></div>
 
-  function updateClock() {
-    const now = new Date();
-    $("time").textContent = new Intl.DateTimeFormat("zh-TW", {
-      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-    }).format(now);
-    $("date").textContent = new Intl.DateTimeFormat("zh-TW", {
-      year: "numeric", month: "long", day: "numeric", weekday: "long"
-    }).format(now);
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
+        <div class="now">
+          <div class="now-main">
+            <h2 id="place-name" class="place-name">正在取得位置…</h2>
+            <p id="place-region" class="place-region"></p>
+            <p class="condition">
+              <span id="condition-icon" class="condition-icon"></span>
+              <span id="condition-text">讀取天氣中…</span>
+            </p>
+          </div>
+          <div class="now-temperature">
+            <p id="temperature" class="temperature">--°</p>
+            <p id="temperature-range" class="temperature-range"></p>
+          </div>
+        </div>
 
-  const weatherText = {
-    0:"晴朗", 1:"大致晴朗", 2:"局部多雲", 3:"陰天",
-    45:"有霧", 48:"霧凇",
-    51:"毛毛雨", 53:"毛毛雨", 55:"較強毛毛雨",
-    56:"凍毛毛雨", 57:"強凍毛毛雨",
-    61:"小雨", 63:"中雨", 65:"大雨",
-    66:"凍雨", 67:"強凍雨",
-    71:"小雪", 73:"中雪", 75:"大雪", 77:"雪粒",
-    80:"陣雨", 81:"較強陣雨", 82:"猛烈陣雨",
-    85:"陣雪", 86:"強陣雪",
-    95:"雷雨", 96:"雷雨伴冰雹", 99:"強雷雨伴冰雹"
-  };
+        <dl class="details">
+          <div class="detail">
+            <dt>體感溫度</dt>
+            <dd id="detail-feels">--</dd>
+          </div>
+          <div class="detail">
+            <dt>相對濕度</dt>
+            <dd id="detail-humidity">--</dd>
+          </div>
+          <div class="detail">
+            <dt>風速與風向</dt>
+            <dd id="detail-wind">--</dd>
+          </div>
+          <div class="detail">
+            <dt>目前降水量</dt>
+            <dd id="detail-precipitation">--</dd>
+          </div>
+          <div class="detail">
+            <dt>紫外線指數</dt>
+            <dd id="detail-uv">--</dd>
+          </div>
+          <div class="detail">
+            <dt>海平面氣壓</dt>
+            <dd id="detail-pressure">--</dd>
+          </div>
+          <div class="detail">
+            <dt>日出</dt>
+            <dd id="detail-sunrise">--</dd>
+          </div>
+          <div class="detail">
+            <dt>日落</dt>
+            <dd id="detail-sunset">--</dd>
+          </div>
+        </dl>
 
-  async function loadWeather(lat, lon, label) {
-    try {
-      $("status").textContent = "正在更新天氣…";
-      const url = new URL("https://api.open-meteo.com/v1/forecast");
-      url.searchParams.set("latitude", lat);
-      url.searchParams.set("longitude", lon);
-      url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,wind_speed_10m");
-      url.searchParams.set("timezone", "auto");
+        <div class="status-row">
+          <p id="status" class="status" role="status" data-tone="info">
+            天氣資料載入中…
+          </p>
+          <button
+            id="refresh-button"
+            class="button"
+            type="button"
+            aria-disabled="true"
+          >
+            更新天氣
+          </button>
+        </div>
+      </section>
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("天氣服務回應失敗");
-      const data = await res.json();
-      const w = data.current;
+      <section class="card" aria-labelledby="hourly-title">
+        <h2 id="hourly-title" class="card-title">未來 24 小時</h2>
+        <ol
+          id="hourly-list"
+          class="hourly"
+          tabindex="0"
+          aria-labelledby="hourly-title"
+        >
+          <li class="list-placeholder">載入中…</li>
+        </ol>
+      </section>
 
-      $("location").textContent = label;
-      $("condition").textContent = weatherText[w.weather_code] ?? `天氣代碼 ${w.weather_code}`;
-      $("temperature").textContent = `${Math.round(w.temperature_2m)}°`;
-      $("feels").textContent = `${Math.round(w.apparent_temperature)}°C`;
-      $("wind").textContent = `${Math.round(w.wind_speed_10m)} km/h`;
-      $("status").textContent = `最後更新：${new Date().toLocaleTimeString("zh-TW")} · Open-Meteo`;
-    } catch (err) {
-      $("condition").textContent = "無法取得天氣";
-      $("status").textContent = err.message;
-    }
-  }
+      <section class="card" aria-labelledby="daily-title">
+        <h2 id="daily-title" class="card-title">7 日預報</h2>
+        <ol id="daily-list" class="daily">
+          <li class="list-placeholder">載入中…</li>
+        </ol>
+      </section>
+    </main>
 
-  function getWeather() {
-    if ("geolocation" in navigator) {
-      $("location").textContent = "正在取得目前位置…";
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          loadWeather(latitude, longitude, "目前位置");
-        },
-        () => loadWeather(25.0330, 121.5654, "台北（預設）"),
-        { enableHighAccuracy: false, timeout: 7000 }
-      );
-    } else {
-      loadWeather(25.0330, 121.5654, "台北（預設）");
-    }
-  }
-
-  $("refresh").addEventListener("click", getWeather);
-  getWeather();
-</script>
-</body>
+    <footer class="footer">
+      <p class="poem">
+        莫聽穿林打葉聲，何妨吟嘯且徐行。
+        <span class="poem-source">—— 蘇軾〈定風波〉</span>
+      </p>
+      <p class="attribution">
+        天氣資料：<a href="https://open-meteo.com/" rel="noopener">Weather data by Open-Meteo.com</a>（<a
+          href="https://creativecommons.org/licenses/by/4.0/"
+          rel="noopener license"
+          >CC BY 4.0</a
+        >）・地點資料：<a href="https://www.geonames.org/" rel="noopener">GeoNames</a>
+      </p>
+      <noscript>
+        <p class="noscript">此頁面需要啟用 JavaScript 才能顯示時間與天氣。</p>
+      </noscript>
+    </footer>
+  </body>
 </html>

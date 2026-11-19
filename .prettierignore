@@ -1,0 +1,8 @@
+# Generated
+node_modules/
+coverage/
+package-lock.json
+
+# Hand-formatted: Prettier's HTML and CJK Markdown output is harder to read.
+*.html
+*.md
