@@ -55,7 +55,7 @@
 - **安全**：嚴格的 Content Security Policy（禁止行內腳本與樣式，只允許連到 Open-Meteo）；所有 API 與使用者資料都以 `textContent` 寫入，不經過 `innerHTML`。
 - **隱私**：送出的座標四捨五入到約 1 公里；不儲存裝置位置；沒有 Cookie、分析或追蹤程式。
 - **無障礙**：WAI-ARIA combobox 搜尋、狀態列 live region、跳到主要內容連結、清楚的鍵盤焦點、支援減少動態效果與 Windows 高對比模式。
-- **測試**：Node 內建測試框架，涵蓋 API 解析、格式化、時區、儲存、定位，以及 HTML 與程式碼之間的契約測試；不碰 DOM 的模組有覆蓋率門檻。畫面與控制器目前以真實瀏覽器手動驗證，自動化端對端測試列於路線圖。
+- **測試**：Node 內建測試框架，涵蓋 API 解析、格式化、時區、儲存、定位，以及 HTML 與程式碼之間的契約測試；不碰 DOM 的模組有覆蓋率門檻。另以 Playwright 在 CI 的 Chromium 執行端對端測試，涵蓋定位備援、城市搜尋（滑鼠與鍵盤）、單位切換、錯誤訊息、手機寬度版面與 CSP；API 回應全部以測試資料模擬，不連外部網路。
 
 ## 快速開始
 
@@ -88,6 +88,7 @@ npm run dev
 | `npm run typecheck` | TypeScript 型別檢查（不輸出檔案） |
 | `npm test` | 單元測試 |
 | `npm run test:coverage` | 單元測試並檢查覆蓋率門檻（行 95%、分支 85%、函式 90%） |
+| `npm run test:e2e` | Playwright 端對端測試（Chromium；初次需先執行 `npx playwright install chromium`，CI 會自動執行） |
 
 ## 專案結構
 
@@ -122,10 +123,12 @@ time_weather/
 │   ├── geolocation.js      # 定位 API 包裝
 │   └── types.js            # 共用 JSDoc 型別
 ├── tests/                  # node:test 單元與契約測試
+├── e2e/                    # Playwright 端對端測試
 ├── scripts/serve.mjs       # 零相依開發伺服器
 ├── docs/images/            # 文件用截圖
 ├── package.json            # 開發指令與開發工具版本
 ├── eslint.config.js        # ESLint 規則
+├── playwright.config.js    # 端對端測試設定
 ├── tsconfig.json           # 型別檢查設定
 ├── CONTRIBUTING.md · CHANGELOG.md · SECURITY.md
 └── .github/                # CI、Dependabot、PR／Issue 範本
@@ -214,7 +217,8 @@ flowchart LR
 - [ ] 空氣品質指標（Open-Meteo Air Quality API）
 - [ ] 收藏多個城市並快速切換
 - [ ] 英文介面（文字已集中在 `src/i18n.js`）
-- [ ] 以 Playwright 在 CI 執行端對端與視覺回歸測試
+- [x] 以 Playwright 在 CI 執行端對端測試
+- [ ] 視覺回歸測試（截圖比對）
 - [ ] 評估離線殼層（Service Worker）與其快取更新策略
 
 ## 參與開發

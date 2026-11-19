@@ -2,7 +2,14 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["node_modules/", "coverage/"] },
+  {
+    ignores: [
+      "node_modules/",
+      "coverage/",
+      "playwright-report/",
+      "test-results/",
+    ],
+  },
   js.configs.recommended,
   {
     languageOptions: {
@@ -30,5 +37,11 @@ export default [
   {
     files: ["tests/**/*.js", "scripts/**/*.mjs", "*.config.js"],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // Playwright specs run in Node, but page.evaluate() callbacks run in the
+    // browser.
+    files: ["e2e/**/*.js"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ];
