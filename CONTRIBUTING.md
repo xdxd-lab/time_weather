@@ -25,7 +25,7 @@
 - **分層**：
   - `src/api/`、`format.js`、`weather-codes.js`、`storage.js` 等**不碰 DOM**，必須有單元測試。
   - `src/ui/` 只負責渲染與互動，不直接呼叫 API。
-  - `src/app.js` 是唯一持有狀態並協調流程的地方。
+  - `src/app.js` 是唯一持有應用程式狀態（地點、預報、偏好）並協調流程的地方；UI 元件只保存自身的互動狀態。
 - **介面文字**：一律寫在 `src/i18n.js`，以 `t("key")` 取用，不要寫死在程式中。
 - **安全（CSP）**：
   - 不要在 HTML 中加入行內 `<script>`、`<style>` 或 `style="…"` 屬性。
@@ -58,4 +58,4 @@ Responses could arrive out of order and overwrite the newer place.
 2. 同步更新 `package.json` 的 `version`（遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)）。
 3. 合併到 `main`。GitHub Pages 約 1 分鐘內自動部署。
 4. 開啟 <https://xdxd-lab.github.io/time_weather/> 確認線上版本（必要時強制重新整理）。
-5. 視需要建立 Git tag 與 GitHub Release（例如 `v1.1.0`）。
+5. 建立 Git tag 與 GitHub Release（例如 `v1.1.0`），CHANGELOG 的版本連結會指向它。

@@ -40,22 +40,22 @@
 | 目前天氣 | 溫度、今日高低溫、體感溫度、相對濕度、風速與風向、降水量、紫外線指數（含等級）、海平面氣壓、日出日落。 |
 | 24 小時預報 | 逐時溫度、天氣圖示與降雨機率，可左右捲動。 |
 | 7 日預報 | 每日天氣、降雨機率與高低溫區間條，一眼比較一週溫度變化。 |
-| 城市搜尋 | 中英文地名皆可，支援注音／拼音輸入法、↑↓ 選擇、Enter 確認、Esc 關閉。 |
+| 城市搜尋 | 中英文地名皆可，支援注音／拼音輸入法、↑↓ 選擇、Enter 確認、Esc 關閉清單（再按一次清除輸入）。 |
 | 定位 | 使用裝置位置；拒絕授權、逾時或不支援時，自動改用台北並在狀態列說明原因。 |
 | 單位切換 | °C（km/h、mm）與 °F（mph、inch）一鍵切換。 |
-| 記住偏好 | 記住溫度單位與最後搜尋的城市；**不會**儲存裝置的位置。 |
-| 自動更新 | 每 15 分鐘、切回分頁且資料超過 10 分鐘、恢復網路時自動更新。 |
+| 記住偏好 | 記住溫度單位與最後搜尋的城市（按「使用目前位置」會改回定位並清除）；**不會**儲存裝置的位置。 |
+| 自動更新 | 分頁開著時資料超過 15 分鐘即更新（約每分鐘檢查一次）；切回分頁且資料超過 10 分鐘、或恢復網路時也會更新。 |
 | 情境背景 | 依天氣（晴、雲、霧、雨、雪、雷雨）與當地日夜變換背景與配色。 |
 
 ## 技術特色
 
 - **無建置步驟、零執行期相依**：原生 ES modules，GitHub Pages 直接提供原始檔；開發工具只用於檢查與測試。
-- **型別安全**：以 JSDoc 標註型別，CI 以 TypeScript `checkJs` + `strict` 檢查全部原始碼。
+- **型別安全**：以 JSDoc 標註型別，CI 以 TypeScript `checkJs` + `strict` 檢查 `src/` 全部原始碼。
 - **可靠的資料層**：每個請求都有逾時與取消機制；切換城市時會取消過期請求，舊回應不會覆蓋新資料；錯誤分為逾時、網路、HTTP、資料格式四類，並轉成可行動的中文訊息；API 回應先驗證再使用。
 - **安全**：嚴格的 Content Security Policy（禁止行內腳本與樣式，只允許連到 Open-Meteo）；所有 API 與使用者資料都以 `textContent` 寫入，不經過 `innerHTML`。
 - **隱私**：送出的座標四捨五入到約 1 公里；不儲存裝置位置；沒有 Cookie、分析或追蹤程式。
 - **無障礙**：WAI-ARIA combobox 搜尋、狀態列 live region、跳到主要內容連結、清楚的鍵盤焦點、支援減少動態效果與 Windows 高對比模式。
-- **測試**：Node 內建測試框架，涵蓋 API 解析、格式化、時區、儲存、定位，以及 HTML 與程式碼之間的契約測試。
+- **測試**：Node 內建測試框架，涵蓋 API 解析、格式化、時區、儲存、定位，以及 HTML 與程式碼之間的契約測試；不碰 DOM 的模組有覆蓋率門檻。畫面與控制器目前以真實瀏覽器手動驗證，自動化端對端測試列於路線圖。
 
 ## 快速開始
 
@@ -81,15 +81,17 @@ npm run dev
 
 | 指令 | 用途 |
 | --- | --- |
-| `npm run dev` | 啟動本機開發伺服器（預設埠 4173，可用 `-- --port 8080` 變更） |
+| `npm run dev` | 啟動本機開發伺服器（預設埠 4173，可用 `-- --port 8080` 或環境變數 `PORT` 變更） |
 | `npm run check` | 一次執行 lint、格式、型別與單元測試（送 PR 前請執行） |
 | `npm run lint` | ESLint 靜態檢查 |
 | `npm run format` / `format:check` | Prettier 自動排版／只檢查 |
 | `npm run typecheck` | TypeScript 型別檢查（不輸出檔案） |
 | `npm test` | 單元測試 |
-| `npm run test:coverage` | 單元測試並輸出覆蓋率 |
+| `npm run test:coverage` | 單元測試並檢查覆蓋率門檻（行 95%、分支 85%、函式 90%） |
 
 ## 專案結構
+
+主要檔案如下（設定檔如 `.editorconfig`、`.nvmrc`、`.prettierrc.json` 未全部列出）：
 
 ```text
 time_weather/
@@ -121,6 +123,11 @@ time_weather/
 │   └── types.js            # 共用 JSDoc 型別
 ├── tests/                  # node:test 單元與契約測試
 ├── scripts/serve.mjs       # 零相依開發伺服器
+├── docs/images/            # 文件用截圖
+├── package.json            # 開發指令與開發工具版本
+├── eslint.config.js        # ESLint 規則
+├── tsconfig.json           # 型別檢查設定
+├── CONTRIBUTING.md · CHANGELOG.md · SECURITY.md
 └── .github/                # CI、Dependabot、PR／Issue 範本
 ```
 
@@ -164,6 +171,12 @@ flowchart LR
 | `staleAfterMs` | 10 分鐘 | 切回分頁時，資料超過此時間就更新 |
 | `forecastDays` / `hourlySlots` | 7 / 24 | 預報天數與逐時筆數 |
 | `defaultPlace` | 台北 | 無法定位時的預設地點 |
+| `locale` | `zh-TW` | 日期、時間的顯示語系 |
+| `geocodingLanguage` | `zh` | 地名搜尋結果的語言 |
+| `geolocationTimeoutMs` | 8 秒 | 等待裝置定位的時間 |
+| `geolocationMaxAgeMs` | 10 分鐘 | 可沿用的快取定位時間 |
+| `searchDebounceMs` | 300 毫秒 | 停止輸入多久後才搜尋 |
+| `searchResultLimit` | 6 | 搜尋結果最多筆數 |
 
 更改 API 位址時，請一併更新 `index.html` 中 CSP 的 `connect-src`；`tests/markup.test.js` 會檢查兩者是否一致。
 
@@ -194,7 +207,7 @@ flowchart LR
 
 ## 瀏覽器支援
 
-支援近年的主流瀏覽器：Chrome／Edge 98+、Firefox 94+、Safari 15.4+（含 iOS／iPadOS）。
+支援近年的主流瀏覽器：Chrome／Edge 98+、Firefox 94+、Safari 15.4+（含 iOS／iPadOS）。最低版本主要取決於 `Object.hasOwn`、`Intl` 時區偏移格式與 CSS `dvh`（舊版會退回 `vh`）。
 
 ## 路線圖
 
