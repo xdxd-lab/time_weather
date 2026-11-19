@@ -57,10 +57,11 @@ export function getDevicePosition(request) {
 
   return new Promise((resolve, reject) => {
     let settled = false;
+    const guardMs = request.guardMs ?? request.timeoutMs + 4_000;
     const guard = setTimeout(() => {
       settled = true;
       reject(new GeolocationError("timeout", "No position was received."));
-    }, request.guardMs ?? request.timeoutMs + 4_000);
+    }, guardMs);
 
     geolocation.getCurrentPosition(
       (position) => {

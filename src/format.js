@@ -300,8 +300,12 @@ export function formatZoneOffset(date, timeZone) {
       timeZoneName: "shortOffset",
     }).formatToParts(date);
     const name = parts.find((part) => part.type === "timeZoneName")?.value;
-    if (!name?.startsWith("GMT")) return null;
-    return `UTC${name.slice(3).replace("-", "−")}`;
+    // "GMT", "GMT+9", "GMT-3:30"; some ICU versions write UTC as "GMT+0".
+    const match = /^GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?$/.exec(name ?? "");
+    if (!match) return null;
+    const [, sign, hours = "0", minutes = "0"] = match;
+    const seconds = (Number(hours) * 60 + Number(minutes)) * 60;
+    return formatUtcOffset(sign === "-" ? -seconds : seconds);
   } catch {
     return null;
   }

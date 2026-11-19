@@ -84,7 +84,8 @@ const server = createServer(async (request, response) => {
     }
     const body = await readFile(file);
     response.writeHead(200, {
-      "Content-Type": CONTENT_TYPES[extname(file)] ?? "application/octet-stream",
+      "Content-Type":
+        CONTENT_TYPES[extname(file)] ?? "application/octet-stream",
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
     });
