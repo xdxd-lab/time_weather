@@ -103,7 +103,7 @@ async function searchTokyo(page) {
 test("falls back to Taipei without location access", async ({ page, api }) => {
   await page.goto("./");
 
-  await expect(page.locator("#place-name")).toHaveText("台北");
+  await expect(page.locator("#place-name")).toHaveText("台北（預設）");
   await expect(page.locator("#status")).toContainText("改為顯示台北");
   await expectForecastRendered(page);
   expect(api.forecastRequests[0].searchParams.get("latitude")).toBe("25.03");
@@ -183,7 +183,7 @@ test("clears the query with a second Escape", async ({ page }) => {
 
   await expect(input).toHaveValue("");
   await expect(page.locator("#search-panel")).toBeHidden();
-  await expect(page.locator("#place-name")).toHaveText("台北");
+  await expect(page.locator("#place-name")).toHaveText("台北（預設）");
 });
 
 test("switches to Fahrenheit units", async ({ page, api }) => {
