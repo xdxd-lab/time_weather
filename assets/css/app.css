@@ -679,8 +679,11 @@ input {
   max-width: 360px;
 }
 
+/* z-index: the input's backdrop-filter creates a stacking context that would
+   otherwise paint over the icon. */
 .search-glyph {
   position: absolute;
+  z-index: 1;
   top: 50%;
   left: 14px;
   width: 18px;
