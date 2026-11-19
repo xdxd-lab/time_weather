@@ -4,9 +4,15 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
 ### 新增
 
 - Playwright 端對端測試（Chromium，於 CI 執行）：定位備援與座標四捨五入、城市搜尋的滑鼠與鍵盤操作、記住城市、°F 切換、API 錯誤訊息、360px 寬度版面（淺色／深色），並在出現頁面錯誤或 CSP 違規時判定失敗。
+
+### 變更
+
+- 開發工具 TypeScript 升級至 7.0.2（型別檢查改用原生編譯器，速度大幅提升）。網站本身沒有變更。
 
 ## [1.0.0] - 2026-11-19
 
@@ -40,5 +46,6 @@
 - 新增嚴格的 Content Security Policy，移除所有行內腳本與樣式。
 - 送出的座標四捨五入至約 1 公里；不儲存裝置位置。
 
-[Unreleased]: https://github.com/xdxd-lab/time_weather/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/xdxd-lab/time_weather/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/xdxd-lab/time_weather/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/xdxd-lab/time_weather/releases/tag/v1.0.0
