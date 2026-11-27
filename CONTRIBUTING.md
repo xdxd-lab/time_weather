@@ -1,63 +1,38 @@
 # 參與開發指南
 
-感謝你願意改進 Time Weather！這份文件說明開發環境、程式風格與發布流程。
+Time Weather 是原生 ES modules 靜態網站。應用程式沒有建置步驟，也不會部署 `node_modules`。安裝開發工具與啟動方式見 [README](README.md#本機開發)。
 
-## 開發環境
+## 從問題到 Pull Request
 
-1. 安裝 Node.js 22.13 以上（建議 [`.nvmrc`](.nvmrc) 的 24 LTS，使用 nvm 可執行 `nvm use`）。
-2. 安裝開發工具：`npm ci`
-3. 啟動：`npm run dev`，開啟 <http://127.0.0.1:4173/time_weather/>
+1. **釐清範圍。** 修正請記錄目前行為、預期行為、重現步驟與瀏覽器。較大的功能、資料來源或相容性變更，先在 Issue 對齊範圍和驗收條件。
+2. **用最新的 `main` 建立分支。** 例如 `feat/forecast-search`、`fix/location-timeout`、`docs/verification-guide` 或 `chore/toolchain`。一個 PR 解決一件事，避免把無關的排版改動混進來。
+3. **補上對應驗證。** 純函式與 API 契約使用 Node 測試；瀏覽器互動及競態增加 Playwright 案例。更新使用方式時同步改 [README](README.md)，使用者可見的重要變更記在 [CHANGELOG.md](CHANGELOG.md) 的 `Unreleased`。
+4. **填寫 PR 範本。** 附上驗證指令和結果、未測項目、相容性或資料風險；UI 變更附桌面與手機前後對照，效能變更附相同條件下的前後樣本。
+5. **通過 CI 並完成審查後才合併。** 以測試結果和實際操作為主，不以「預期會通過」代替驗收。主分支會影響公開站，維護者合併前先確認改動範圍。
 
-應用程式本身**沒有建置步驟，也沒有執行期相依套件**；`node_modules` 只放 lint、排版、型別檢查等工具，不會部署。
+## PR 自查清單
 
-## 開發流程
+- [ ] `npm run check` 和相關瀏覽器測試均通過；若某項只能在 CI 執行，在 PR 說明。
+- [ ] UI 在 360–390 px、桌面、淺／深色、鍵盤與減少動態效果下仍可操作。
+- [ ] 涉及請求、定位或儲存時，涵蓋成功、失敗與重疊操作；不記錄裝置座標，不新增未說明的對外請求。
+- [ ] 新設定有合理預設值，必要時同步調整文件、HTML 契約測試與 CSP。
+- [ ] 無測試產物、憑證、個人位置或無關改動；已說明需要維護者確認的事項。
 
-1. 從 `main` 建立分支，名稱建議 `feat/…`、`fix/…`、`docs/…`、`chore/…`。
-2. 修改程式並補上測試。
-3. 送出前執行 `npm run check`（lint、格式、型別、單元測試）。
-4. 以 `npm run dev` 在瀏覽器實際操作，至少檢查：桌面與手機寬度（360–390px）、深色模式、鍵盤操作。
-5. 開 Pull Request 並填寫範本。CI 通過且經過審查後再合併。
+## 程式慣例
 
-## 程式風格
+- **責任分層。** `src/app.js` 協調狀態；`src/ui/` 接收資料、渲染與處理互動；API 與格式化邏輯不碰 DOM。搜尋元件使用控制器注入的查詢函式，不自行對外連線。共用型別放在 `src/types.js`，以 JSDoc 和 TypeScript strict `checkJs` 驗證。
+- **錯誤與競態。** 對外回應先驗證。使用 `RequestError`／`describeError` 將失敗映射成可行動訊息；取消不是使用者錯誤。地點、單位或定位請求重疊時，只有最新選擇可更新畫面。
+- **資產與安全。** HTML 使用相對路徑，不加入行內腳本或樣式。API 或使用者輸入用 `textContent` 或安全 DOM API；`innerHTML` 限可信的程式內常數。變更外部主機時一起檢查 CSP、隱私說明與測試。
+- **介面與排版。** 介面文字集中在 `src/i18n.js`。JavaScript、CSS、JSON、YAML 使用 Prettier（`npm run format`）；HTML 和 Markdown 手動維持一致。
+- **提交文字。** 標題用簡短動詞片語，一筆提交完成一項變更。例如 `Cancel stale forecast requests on place change`。有競態或取捨時，在內文說明原因。
 
-- **排版交給工具**：JavaScript、CSS、JSON、YAML 由 Prettier 處理（`npm run format`）；HTML 與 Markdown 手動維持整齊。
-- **型別**：所有函式以 JSDoc 標註參數與回傳型別，共用型別放在 `src/types.js`。`npm run typecheck` 以 strict 模式檢查。
-- **分層**：
-  - `src/api/`、`format.js`、`weather-codes.js`、`storage.js` 等**不碰 DOM**，必須有單元測試。
-  - `src/ui/` 只負責渲染與互動，不直接呼叫 API。
-  - `src/app.js` 是唯一持有應用程式狀態（地點、預報、偏好）並協調流程的地方；UI 元件只保存自身的互動狀態。
-- **介面文字**：一律寫在 `src/i18n.js`，以 `t("key")` 取用，不要寫死在程式中。
-- **安全（CSP）**：
-  - 不要在 HTML 中加入行內 `<script>`、`<style>` 或 `style="…"` 屬性。
-  - 動態樣式用 CSS class，或 `element.style.setProperty()`。
-  - API 或使用者資料一律用 `textContent` 寫入；`innerHTML` 只能用於程式內的常數（例如 SVG 圖示）。
-  - 新增對外連線時，同步更新 `index.html` CSP 的 `connect-src`。
-- **相容性**：只使用 [README](README.md#瀏覽器支援) 列出的瀏覽器都支援的語法與 API。
-- **錯誤處理**：網路錯誤要轉成 `RequestError`，由 `errors.js` 轉成使用者看得懂的訊息；被取消的請求（`aborted`）不顯示錯誤。
+## 驗證與發布
 
-## 測試
+跑測試、查看失敗追蹤、量測效能與記錄相容性，請依[驗證與效能量測](docs/verification.md)。
 
-- 測試使用 Node 內建的 `node:test` 與 `node:assert/strict`，檔名為 `tests/**/*.test.js`。
-- 測試資料請用 `tests/helpers/fixtures.js` 的建構函式，形狀要符合真實 API 回應。
-- `tests/markup.test.js` 檢查 HTML 與程式碼之間的契約（元素 id、CSP、資料來源標示、相對路徑）。改 HTML 結構時請一起更新。
-- 覆蓋率門檻：行 95%、分支 85%、函式 90%（`npm run test:coverage`，CI 會強制檢查）。
-- 端對端測試放在 `e2e/**/*.spec.js`，以 Playwright 在 Chromium 執行（`npm run test:e2e`）。所有 Open-Meteo 請求都以 `tests/helpers/fixtures.js` 的資料回應，其他對外請求會直接讓測試失敗；頁面錯誤、主控台錯誤與 CSP 違規也會讓測試失敗。
-- 改到控制器、搜尋元件或版面時，請補上對應的端對端測試。本機沒有安裝瀏覽器時可以只靠 CI 執行，失敗時從 Actions 下載 `playwright-report` 檢視追蹤紀錄與截圖。
+發布時，維護者：
 
-## Commit 訊息
-
-使用英文祈使句標題（不超過 72 字元），必要時空一行後說明「為什麼」：
-
-```text
-Cancel stale forecast requests when the place changes
-
-Responses could arrive out of order and overwrite the newer place.
-```
-
-## 發布流程
-
-1. 在 [CHANGELOG.md](CHANGELOG.md) 的 `Unreleased` 區塊整理變更，改為新版本號與日期。
-2. 同步更新 `package.json` 的 `version`（遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)）。
-3. 合併到 `main`。GitHub Pages 約 1 分鐘內自動部署。
-4. 開啟 <https://xdxd-lab.github.io/time_weather/> 確認線上版本（必要時強制重新整理）。
-5. 建立 Git tag 與 GitHub Release（例如 `v1.1.0`），CHANGELOG 的版本連結會指向它。
+1. 整理 `Unreleased`，確認版本號、日期及比較連結；僅在發布 PR 同步更改 `package.json` 和 `package-lock.json` 的版本。
+2. 看過 CI 及 PR 的最新提交後合併到 `main`。
+3. 等 GitHub Pages 部署成功，再以正式入口驗證會影響使用者的操作。若發現回歸，優先用一筆可追溯的 revert 修正，避免強制推送。
+4. 對已驗證的發布提交建立版本標籤和 GitHub Release（例如 `v1.1.0`），並保留可追蹤的變更紀錄。

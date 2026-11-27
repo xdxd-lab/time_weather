@@ -33,10 +33,12 @@ export const APP_CONFIG = Object.freeze({
   geocodingUrl: "https://geocoding-api.open-meteo.com/v1/search",
   /** Abort any single HTTP request after this many milliseconds. */
   requestTimeoutMs: 10_000,
-  /** Give up waiting for the browser's location after this long. */
-  geolocationTimeoutMs: 8_000,
-  /** Reuse a cached device position for this long. */
-  geolocationMaxAgeMs: 10 * 60_000,
+  /** Time allowed for a fresh high-accuracy device fix. */
+  geolocationTimeoutMs: 9_000,
+  /** Retry once with the standard provider when the first acquisition fails. */
+  geolocationRetryTimeoutMs: 6_000,
+  /** Extra time for the user to respond to the browser's permission dialog. */
+  geolocationPermissionGraceMs: 20_000,
   /** Refresh the forecast in the background at this interval. */
   refreshIntervalMs: 15 * 60_000,
   /** When the tab becomes visible again, refresh if data is older than this. */

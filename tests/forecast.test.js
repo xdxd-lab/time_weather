@@ -26,6 +26,7 @@ describe("buildForecastUrl", () => {
     assert.equal(params.get("longitude"), "121.57");
     assert.equal(params.get("timezone"), "auto");
     assert.equal(params.get("forecast_days"), "7");
+    assert.equal(params.get("forecast_hours"), "24");
     assert.equal(params.get("temperature_unit"), "celsius");
     assert.equal(params.get("wind_speed_unit"), "kmh");
     assert.equal(params.get("precipitation_unit"), "mm");
@@ -40,11 +41,13 @@ describe("buildForecastUrl", () => {
       longitude: -74.01,
       units: "imperial",
       forecastDays: 3,
+      hourlySlots: 12,
     }).searchParams;
     assert.equal(params.get("temperature_unit"), "fahrenheit");
     assert.equal(params.get("wind_speed_unit"), "mph");
     assert.equal(params.get("precipitation_unit"), "inch");
     assert.equal(params.get("forecast_days"), "3");
+    assert.equal(params.get("forecast_hours"), "12");
   });
 
   it("keeps a custom base URL, e.g. a proxy", () => {

@@ -1,5 +1,6 @@
 /**
  * Maps internal errors to short, actionable messages for the status line.
+ * Callers filter cancelled requests before asking for a user-facing message.
  */
 
 import { RequestError } from "./api/http.js";

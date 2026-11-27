@@ -68,9 +68,20 @@ const test = base.extend(
           api.forecastRequests.push(url);
           // Answer like the real API: the forecast carries the place's zone.
           const inTokyo = url.searchParams.get("latitude") === "35.69";
-          return route.fulfill({
-            json: forecastResponse(inTokyo ? TOKYO_ZONE : {}),
-          });
+          const data = forecastResponse(inTokyo ? TOKYO_ZONE : {});
+          const hours = Number(url.searchParams.get("forecast_hours"));
+          if (hours > 0) {
+            const start = data.hourly.time.findIndex((time) =>
+              time.startsWith(data.current.time.slice(0, 13)),
+            );
+            data.hourly = Object.fromEntries(
+              Object.entries(data.hourly).map(([key, values]) => [
+                key,
+                values.slice(start, start + hours),
+              ]),
+            );
+          }
+          return route.fulfill({ json: data });
         });
         await page.route(GEOCODING, (route) => {
           api.geocodingRequests.push(new URL(route.request().url()));
@@ -237,3 +248,77 @@ for (const colorScheme of ["light", "dark"]) {
     expect(overflow).toBe(0);
   });
 }
+
+test("reuses a pending search and cancels it when the query changes", async ({
+  page,
+}) => {
+  const queries = [];
+  const slow = Promise.withResolvers();
+  await page.route(GEOCODING, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("name");
+    queries.push(query);
+    const fixture = geocodingResponse();
+    if (query === "Tokyo") {
+      await slow.promise;
+      // It is safe to complete the mock after the browser has cancelled it.
+      await route.fulfill({ json: fixture }).catch(() => {});
+      return;
+    }
+    await route.fulfill({
+      json: { results: [{ ...fixture.results[0], id: 2, name: "大阪" }] },
+    });
+  });
+
+  try {
+    await page.goto("./");
+    const input = page.locator("#search-input");
+    await input.fill("Tokyo");
+    await input.press("Enter");
+    await expect.poll(() => queries).toEqual(["Tokyo"]);
+    await input.press("Enter");
+    await input.press("Enter");
+
+    const aborted = page.waitForEvent("requestfailed", (request) =>
+      request.url().includes("name=Tokyo"),
+    );
+    await input.fill("Osaka");
+    await aborted;
+    await expect(page.getByRole("option", { name: /大阪/ })).toBeVisible();
+    expect(queries).toEqual(["Tokyo", "Osaka"]);
+  } finally {
+    slow.resolve();
+  }
+});
+
+test("retains equivalent queries and moves only the active option", async ({
+  page,
+  api,
+}) => {
+  await page.goto("./");
+  await searchTokyo(page);
+  const input = page.locator("#search-input");
+  const first = page.locator("#search-option-0");
+  const second = page.locator("#search-option-1");
+
+  await input.fill("  Tokyo  ");
+  await input.press("ArrowDown");
+  await expect(first).toHaveAttribute("aria-selected", "false");
+  await expect(second).toHaveAttribute("aria-selected", "true");
+  await expect(input).toHaveAttribute(
+    "aria-activedescendant",
+    "search-option-1",
+  );
+  expect(api.geocodingRequests).toHaveLength(1);
+
+  // Inspect immediately in the same browser task, before the new request
+  // can populate the list; stale choices should already be gone.
+  const staleOptions = await input.evaluate((element) => {
+    element.value = "Osaka";
+    element.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    return {
+      optionCount: document.querySelectorAll("#search-results > li").length,
+      hasActive: element.hasAttribute("aria-activedescendant"),
+    };
+  });
+  expect(staleOptions).toEqual({ optionCount: 0, hasActive: false });
+});

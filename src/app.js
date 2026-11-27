@@ -15,7 +15,11 @@ import {
   formatZoneOffset,
   isValidTimeZone,
 } from "./format.js";
-import { GeolocationError, getDevicePosition } from "./geolocation.js";
+import {
+  GeolocationError,
+  getFreshDevicePosition,
+  getLocationPermission,
+} from "./geolocation.js";
 import { t } from "./i18n.js";
 import {
   getBrowserStorage,
@@ -37,6 +41,7 @@ import { WeatherView } from "./ui/view.js";
 
 /** @type {Readonly<Record<GeoErrorKind, MessageKey>>} */
 const GEO_MESSAGES = Object.freeze({
+  insecure: "geo.insecure",
   denied: "geo.denied",
   unavailable: "geo.unavailable",
   timeout: "geo.timeout",
@@ -62,6 +67,8 @@ export class App {
     this.fetchedAt = 0;
     /** @type {AbortController | null} */
     this.request = null;
+    /** @type {AbortController | null} */
+    this.positionRequest = null;
     /** Extra context for the status line, e.g. why the fallback is shown. */
     /** @type {string | null} */
     this.notice = null;
@@ -90,7 +97,9 @@ export class App {
   bindControls() {
     const { view, config } = this;
     view.refreshButton.addEventListener("click", () => {
-      if (!this.busy) void this.refresh();
+      if (this.busy) return;
+      if (this.place?.source === "search") void this.refresh();
+      else void this.locate();
     });
     view.locateButton.addEventListener("click", () => void this.locate());
     for (const button of view.unitButtons) {
@@ -122,7 +131,12 @@ export class App {
     });
 
     window.addEventListener("online", () => {
-      void this.refresh({ background: true });
+      void this.refreshForeground();
+    });
+    void getLocationPermission().then((permission) => {
+      permission?.addEventListener("change", () => {
+        if (permission.state === "granted") void this.retryFallbackLocation();
+      });
     });
     window.addEventListener("offline", () => {
       view.renderStatus(t("status.offline"), "warning");
@@ -130,11 +144,21 @@ export class App {
   }
 
   startClock() {
+    /** @type {number | undefined} */
+    let timer;
     const tick = () => {
+      if (document.visibilityState !== "visible") return;
       this.view.renderClock(new Date(), this.clockZone);
       // Re-align to the next whole second so the display never drifts.
-      setTimeout(tick, 1000 - (Date.now() % 1000) + 15);
+      timer = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 15);
     };
+    // Hidden tabs do not need DOM updates. Refresh immediately when shown
+    // before starting a new aligned timeout chain.
+    document.addEventListener("visibilitychange", () => {
+      window.clearTimeout(timer);
+      timer = undefined;
+      tick();
+    });
     tick();
   }
 
@@ -149,13 +173,49 @@ export class App {
       }
     }, REFRESH_CHECK_MS);
     document.addEventListener("visibilitychange", () => {
-      if (
-        document.visibilityState === "visible" &&
-        this.isOlderThan(staleAfterMs)
-      ) {
-        void this.refresh({ background: true });
+      if (document.visibilityState === "visible") {
+        void this.refreshForeground(staleAfterMs);
       }
     });
+  }
+
+  /**
+   * Recover a temporary default after returning from phone Settings. Never
+   * replace an explicitly selected city or automatically show another prompt.
+   * @returns {Promise<boolean>}
+   */
+  async retryFallbackLocation() {
+    if (
+      document.visibilityState !== "visible" ||
+      this.place?.source !== "default" ||
+      this.preferences.place ||
+      this.positionRequest
+    ) {
+      return false;
+    }
+    const selection = this.selection;
+    const permission = await getLocationPermission();
+    if (
+      permission?.state !== "granted" ||
+      selection !== this.selection ||
+      document.visibilityState !== "visible"
+    ) {
+      return false;
+    }
+    void this.locate();
+    return true;
+  }
+
+  /** @param {number} [ageMs] */
+  async refreshForeground(ageMs = 0) {
+    if (
+      document.visibilityState !== "visible" ||
+      this.busy ||
+      (await this.retryFallbackLocation())
+    ) {
+      return;
+    }
+    if (this.isOlderThan(ageMs)) void this.refresh({ background: true });
   }
 
   /** @param {number} ageMs */
@@ -187,6 +247,10 @@ export class App {
     const selection = ++this.selection;
     this.request?.abort();
     this.request = null;
+    this.positionRequest?.abort();
+    const controller = new AbortController();
+    this.positionRequest = controller;
+    this.place = null;
     this.updatePreferences({ place: null });
     this.view.renderLocating();
     this.setBusy(true);
@@ -197,9 +261,13 @@ export class App {
     /** @type {string | null} */
     let notice = null;
     try {
-      const position = await getDevicePosition({
+      const position = await getFreshDevicePosition({
         timeoutMs: this.config.geolocationTimeoutMs,
-        maximumAgeMs: this.config.geolocationMaxAgeMs,
+        retryTimeoutMs: this.config.geolocationRetryTimeoutMs,
+        guardMs:
+          this.config.geolocationTimeoutMs +
+          this.config.geolocationPermissionGraceMs,
+        signal: controller.signal,
       });
       place = {
         id: "device",
@@ -216,6 +284,7 @@ export class App {
     }
     // The user may have picked a city while we were waiting.
     if (selection !== this.selection) return;
+    this.positionRequest = null;
     await this.showPlace(place, notice);
   }
 
@@ -225,6 +294,8 @@ export class App {
    */
   async showPlace(place, notice = null) {
     this.selection += 1;
+    this.positionRequest?.abort();
+    this.positionRequest = null;
     this.place = place;
     this.notice = notice;
     // Never show one place's numbers under another place's name.
@@ -262,7 +333,7 @@ export class App {
    */
   async refresh(options = {}) {
     const place = this.place;
-    if (!place) return;
+    if (!place || this.positionRequest) return;
     this.request?.abort();
     const controller = new AbortController();
     this.request = controller;

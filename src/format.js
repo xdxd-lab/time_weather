@@ -163,6 +163,24 @@ export function daysBetween(fromDate, toDate) {
   return Math.round((calendarDay(toDate) - calendarDay(fromDate)) / DAY_MS);
 }
 
+// Search can visit arbitrarily many zones over a long session. A small FIFO
+// cache bounds retained Intl objects without evicting normal recent use.
+const MAX_FORMAT_CACHE_SIZE = 64;
+
+/**
+ * @template T
+ * @param {Map<string, T>} cache
+ * @param {string} key
+ * @param {T} value
+ */
+function remember(cache, key, value) {
+  if (cache.size >= MAX_FORMAT_CACHE_SIZE) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(key, value);
+}
+
 /** @type {Map<string, Intl.DateTimeFormat>} */
 const formatterCache = new Map();
 
@@ -177,7 +195,7 @@ export function dateTimeFormatter(locale, options) {
   let formatter = formatterCache.get(key);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat(locale, options);
-    formatterCache.set(key, formatter);
+    remember(formatterCache, key, formatter);
   }
   return formatter;
 }
@@ -198,7 +216,7 @@ export function formatDayLabel(date, today, locale) {
   if (Number.isNaN(timestamp)) return { name: PLACEHOLDER, date: "" };
   const utc = new Date(timestamp);
   const monthDay = `${utc.getUTCMonth() + 1}/${utc.getUTCDate()}`;
-  const offset = daysBetween(today, date);
+  const offset = Math.round((timestamp - calendarDay(today)) / DAY_MS);
   if (offset === 0) return { name: t("daily.today"), date: monthDay };
   if (offset === 1) return { name: t("daily.tomorrow"), date: monthDay };
   const weekday = dateTimeFormatter(locale, WEEKDAY_OPTIONS).format(utc);
@@ -223,7 +241,7 @@ export function isValidTimeZone(timeZone) {
     } catch {
       valid = false;
     }
-    timeZoneValidity.set(timeZone, valid);
+    remember(timeZoneValidity, timeZone, valid);
   }
   return valid;
 }
@@ -248,6 +266,13 @@ export function formatUtcOffset(offsetSeconds) {
 }
 
 /**
+ * The visible clock generally keeps one locale and zone. Keep its formatter
+ * pair ready so each second need not rebuild options and JSON cache keys.
+ * @type {{ locale: string, timeZone?: string, time: Intl.DateTimeFormat, date: Intl.DateTimeFormat } | undefined}
+ */
+let clockFormats;
+
+/**
  * Time and long date for the clock, in the given (valid) time zone.
  * @param {Date} now
  * @param {string} locale
@@ -255,22 +280,31 @@ export function formatUtcOffset(offsetSeconds) {
  * @returns {{ time: string, date: string }}
  */
 export function formatClock(now, locale, timeZone) {
-  const zone = isValidTimeZone(timeZone) ? { timeZone } : {};
-  const time = dateTimeFormatter(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-    ...zone,
-  }).format(now);
-  const date = dateTimeFormatter(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-    ...zone,
-  }).format(now);
-  return { time, date };
+  if (clockFormats?.locale !== locale || clockFormats.timeZone !== timeZone) {
+    const zone = isValidTimeZone(timeZone) ? { timeZone } : {};
+    clockFormats = {
+      locale,
+      timeZone,
+      time: dateTimeFormatter(locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+        ...zone,
+      }),
+      date: dateTimeFormatter(locale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+        ...zone,
+      }),
+    };
+  }
+  return {
+    time: clockFormats.time.format(now),
+    date: clockFormats.date.format(now),
+  };
 }
 
 /**

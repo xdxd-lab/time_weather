@@ -49,6 +49,21 @@ describe("index.html", () => {
     assert.doesNotMatch(html, /\sstyle="/);
   });
 
+  it("labels weather panels and keeps decorative artwork out of announcements", () => {
+    for (const id of [
+      "place-name",
+      "conditions-title",
+      "hourly-title",
+      "daily-title",
+    ]) {
+      assert.match(html, new RegExp(`aria-labelledby="${id}"`));
+      assert.match(html, new RegExp(`id="${id}"`));
+    }
+    assert.match(html, /class="hero-art" aria-hidden="true"/);
+    assert.match(html, /aria-describedby="hourly-hint"/);
+    assert.match(html, /id="hourly-hint"/);
+  });
+
   it("credits Open-Meteo (CC BY 4.0) and GeoNames next to the data", () => {
     assert.match(html, /href="https:\/\/open-meteo\.com\/"/);
     assert.match(html, /creativecommons\.org\/licenses\/by\/4\.0/);

@@ -3,19 +3,22 @@
  */
 
 /**
- * @typedef {"unsupported" | "denied" | "unavailable" | "timeout"} GeolocationErrorKind
+ * @typedef {"insecure" | "unsupported" | "denied" | "unavailable" | "timeout"} GeolocationErrorKind
  */
 
 export class GeolocationError extends Error {
   /**
    * @param {GeolocationErrorKind} kind
    * @param {string} message
+   * @param {boolean} [retryable] A completed provider failure, not our prompt guard.
    */
-  constructor(kind, message) {
+  constructor(kind, message, retryable = false) {
     super(message);
     this.name = "GeolocationError";
     /** @readonly */
     this.kind = kind;
+    /** @readonly */
+    this.retryable = retryable;
   }
 }
 
@@ -31,25 +34,34 @@ const ERROR_KINDS = /** @type {const} */ ({
  * @property {number} timeoutMs
  * @property {number} [maximumAgeMs]
  * @property {number} [guardMs] Hard deadline; defaults to timeoutMs + 4 s.
+ * @property {boolean} [highAccuracy]
+ * @property {AbortSignal} [signal]
  * @property {Pick<Geolocation, "getCurrentPosition"> | null} [geolocation]
  *   Injectable for tests; defaults to `navigator.geolocation`.
  */
 
 /**
- * Resolves with the device's approximate position.
- *
- * The API's own `timeout` only starts after the user answers the permission
- * prompt, so an ignored prompt would wait forever. A second, slightly longer
- * guard timer makes sure the promise always settles.
+ * Resolves with the device's position. The API's own timeout excludes waiting
+ * for the permission prompt, so a separate guard covers the whole call.
  * @param {PositionRequest} request
  * @returns {Promise<{ latitude: number, longitude: number }>}
  */
 export function getDevicePosition(request) {
+  const { signal } = request;
+  if (signal?.aborted) return Promise.reject(signal.reason);
+  if (globalThis.isSecureContext === false) {
+    return Promise.reject(
+      new GeolocationError(
+        "insecure",
+        "Geolocation requires a secure context.",
+      ),
+    );
+  }
   const geolocation =
     request.geolocation === undefined
       ? globalThis.navigator?.geolocation
       : request.geolocation;
-  if (!geolocation) {
+  if (!geolocation?.getCurrentPosition) {
     return Promise.reject(
       new GeolocationError("unsupported", "Geolocation is not available."),
     );
@@ -59,33 +71,102 @@ export function getDevicePosition(request) {
     let settled = false;
     const guardMs = request.guardMs ?? request.timeoutMs + 4_000;
     const guard = setTimeout(() => {
-      settled = true;
-      reject(new GeolocationError("timeout", "No position was received."));
+      if (finish()) {
+        reject(new GeolocationError("timeout", "No position was received."));
+      }
     }, guardMs);
+    const onAbort = () => {
+      if (finish()) reject(signal?.reason);
+    };
+    function finish() {
+      if (settled) return false;
+      settled = true;
+      clearTimeout(guard);
+      signal?.removeEventListener("abort", onAbort);
+      return true;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
 
-    geolocation.getCurrentPosition(
-      (position) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(guard);
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(guard);
-        const kind =
-          ERROR_KINDS[/** @type {1 | 2 | 3} */ (error.code)] ?? "unavailable";
-        reject(new GeolocationError(kind, error.message || kind));
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: request.timeoutMs,
-        maximumAge: request.maximumAgeMs ?? 0,
-      },
-    );
+    try {
+      geolocation.getCurrentPosition(
+        (position) => {
+          if (!finish()) return;
+          const latitude = position?.coords?.latitude;
+          const longitude = position?.coords?.longitude;
+          if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            Math.abs(latitude) > 90 ||
+            Math.abs(longitude) > 180
+          ) {
+            reject(
+              new GeolocationError(
+                "unavailable",
+                "Invalid device coordinates.",
+                true,
+              ),
+            );
+            return;
+          }
+          resolve({ latitude, longitude });
+        },
+        (error) => {
+          if (!finish()) return;
+          const kind =
+            ERROR_KINDS[/** @type {1 | 2 | 3} */ (error.code)] ?? "unavailable";
+          reject(
+            new GeolocationError(
+              kind,
+              error.message || kind,
+              kind !== "denied",
+            ),
+          );
+        },
+        {
+          enableHighAccuracy: request.highAccuracy ?? false,
+          timeout: request.timeoutMs,
+          maximumAge: request.maximumAgeMs ?? 0,
+        },
+      );
+    } catch (error) {
+      if (finish()) reject(error);
+    }
   });
+}
+
+/**
+ * Ask for a fresh fix. If the high-accuracy provider reports an acquisition
+ * failure, try once more with the standard provider. Do not retry a refused,
+ * unsupported, aborted or still-unanswered permission prompt.
+ * @param {PositionRequest & { retryTimeoutMs: number }} request
+ */
+export async function getFreshDevicePosition(request) {
+  const positionRequest = { ...request, maximumAgeMs: 0 };
+  try {
+    return await getDevicePosition({ ...positionRequest, highAccuracy: true });
+  } catch (error) {
+    if (!(error instanceof GeolocationError) || !error.retryable) throw error;
+    return getDevicePosition({
+      ...positionRequest,
+      timeoutMs: request.retryTimeoutMs,
+      guardMs: request.retryTimeoutMs + 2_000,
+      highAccuracy: false,
+    });
+  }
+}
+
+/**
+ * Reads site permission without prompting. Some mobile browsers don't expose
+ * this: the explicit Locate button can still request geolocation there.
+ * @param {Pick<Permissions, "query">} [permissions]
+ * @returns {Promise<PermissionStatus | null>}
+ */
+export async function getLocationPermission(
+  permissions = globalThis.navigator?.permissions,
+) {
+  try {
+    return (await permissions?.query({ name: "geolocation" })) ?? null;
+  } catch {
+    return null;
+  }
 }
