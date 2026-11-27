@@ -1,7 +1,7 @@
 /**
- * Persists user preferences in Web Storage. Storage can be unavailable
- * (private browsing, disabled cookies, quota errors), so every access is
- * guarded and the app always falls back to defaults instead of crashing.
+ * Persists user preferences in Web Storage. Browser policies or quota errors
+ * can block access, so reads fall back to defaults and writes report failure
+ * without interrupting the current session.
  *
  * Privacy: only places the user explicitly searched for are saved. A device
  * position is never written to storage.

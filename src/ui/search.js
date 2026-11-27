@@ -38,8 +38,8 @@ export class PlaceSearch {
     this.resultsQuery = "";
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     this.debounceTimer = undefined;
-    /** @type {AbortController | null} */
-    this.controller = null;
+    /** @type {{ query: string, controller: AbortController } | null} */
+    this.request = null;
 
     const { form, input, panel, list } = options;
     input.addEventListener("input", (event) => {
@@ -73,14 +73,24 @@ export class PlaceSearch {
   }
 
   scheduleSearch() {
-    clearTimeout(this.debounceTimer);
     const query = normalizeQuery(this.options.input.value);
     if (query.length < MIN_QUERY_LENGTH) {
-      this.cancel();
       this.setResults([], "");
       this.close();
       return;
     }
+    if (this.request?.query === query) return;
+    // Abort obsolete work now, not after the next debounce interval.
+    this.cancel();
+    if (query === this.resultsQuery) {
+      if (!this.isOpen) {
+        this.open();
+        this.setActive(this.activeIndex);
+      }
+      return;
+    }
+    if (this.resultsQuery) this.setResults([], "");
+    if (this.isOpen) this.showMessage(t("search.searching"));
     this.debounceTimer = setTimeout(() => {
       void this.run(query);
     }, this.options.debounceMs);
@@ -88,14 +98,19 @@ export class PlaceSearch {
 
   /** @param {string} query Already normalised. */
   async run(query) {
+    if (this.request?.query === query) return;
     this.cancel();
     const controller = new AbortController();
-    this.controller = controller;
+    const request = { query, controller };
+    this.request = request;
+    const isCurrent = () =>
+      this.request === request &&
+      normalizeQuery(this.options.input.value) === query;
     this.showMessage(t("search.searching"));
     this.open();
     try {
       const places = await this.options.search(query, controller.signal);
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
       this.setResults(places, query);
       this.showMessage(
         places.length > 0
@@ -103,11 +118,11 @@ export class PlaceSearch {
           : t("search.empty", { query }),
       );
     } catch (error) {
-      if (isAbortError(error) || controller.signal.aborted) return;
+      if (isAbortError(error) || !isCurrent()) return;
       this.setResults([], "");
       this.showMessage(t("search.error"));
     } finally {
-      if (this.controller === controller) this.controller = null;
+      if (this.request === request) this.request = null;
     }
   }
 
@@ -123,6 +138,7 @@ export class PlaceSearch {
       item.id = `search-option-${index}`;
       item.dataset.index = String(index);
       item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", "false");
       item.append(
         createElement("span", "search-option-name", place.name),
         createElement(
@@ -134,18 +150,21 @@ export class PlaceSearch {
       return item;
     });
     this.options.list.replaceChildren(...items);
+    this.activeIndex = -1;
     this.setActive(places.length > 0 ? 0 : -1);
   }
 
   /** @param {number} index -1 for none. */
   setActive(index) {
-    this.activeIndex = index;
     const { input, list } = this.options;
-    for (const option of list.children) {
-      const selected = option.id === `search-option-${index}`;
-      option.setAttribute("aria-selected", String(selected));
-      if (selected) option.scrollIntoView({ block: "nearest" });
+    const previous = list.children[this.activeIndex];
+    const selected = list.children[index];
+    this.activeIndex = index;
+    if (previous !== selected) {
+      previous?.setAttribute("aria-selected", "false");
+      selected?.setAttribute("aria-selected", "true");
     }
+    selected?.scrollIntoView({ block: "nearest" });
     if (index >= 0 && this.isOpen) {
       input.setAttribute("aria-activedescendant", `search-option-${index}`);
     } else {
@@ -194,6 +213,7 @@ export class PlaceSearch {
       return;
     }
     if (query.length < MIN_QUERY_LENGTH) {
+      this.cancel();
       this.setResults([], "");
       this.showMessage(t("search.tooShort", { min: MIN_QUERY_LENGTH }));
       this.open();
@@ -206,8 +226,8 @@ export class PlaceSearch {
   /** @param {number} index */
   select(index) {
     const place = this.results[index];
-    if (!place) return;
     const { input } = this.options;
+    if (!place || normalizeQuery(input.value) !== this.resultsQuery) return;
     this.close();
     input.value = "";
     this.setResults([], "");
@@ -222,6 +242,7 @@ export class PlaceSearch {
   }
 
   close() {
+    this.cancel();
     this.options.panel.hidden = true;
     this.options.input.setAttribute("aria-expanded", "false");
     this.options.input.removeAttribute("aria-activedescendant");
@@ -229,8 +250,9 @@ export class PlaceSearch {
 
   cancel() {
     clearTimeout(this.debounceTimer);
-    this.controller?.abort();
-    this.controller = null;
+    this.debounceTimer = undefined;
+    this.request?.controller.abort();
+    this.request = null;
   }
 
   /** @param {string} text */

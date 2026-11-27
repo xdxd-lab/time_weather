@@ -70,6 +70,10 @@ export class WeatherView {
     this.refreshButton = requireElement("refresh-button", HTMLButtonElement);
     this.locateButton = requireElement("locate-button", HTMLButtonElement);
     this.hourlyList = requireElement("hourly-list", HTMLOListElement);
+    this.hourlyTrend = requireElement("hourly-trend", HTMLElement);
+    this.hourlyTrendRange = requireElement("hourly-trend-range", HTMLElement);
+    this.hourlyTrendArea = requireElement("hourly-trend-area", SVGPathElement);
+    this.hourlyTrendLine = requireElement("hourly-trend-line", SVGPathElement);
     this.dailyList = requireElement("daily-list", HTMLOListElement);
     this.unitButtons = [
       requireElement("units-metric", HTMLButtonElement),
@@ -155,7 +159,7 @@ export class WeatherView {
     setText(this.detailSunset, formatLocalTime(today?.sunset));
 
     this.renderHourly(forecast);
-    this.renderDaily(forecast);
+    this.renderDaily(forecast, place.id);
     document.title = t("document.title", {
       temperature: formatTemperature(current.temperature),
       condition: weather.label,
@@ -177,10 +181,60 @@ export class WeatherView {
       return item;
     });
     this.hourlyList.replaceChildren(...items);
+    this.renderHourlyTrend(forecast.hourly);
   }
 
-  /** @param {Forecast} forecast */
-  renderDaily(forecast) {
+  /** @param {Forecast["hourly"]} slots */
+  renderHourlyTrend(slots) {
+    const temps = slots.map((slot) => slot.temperature);
+    const values = temps.filter((temperature) => temperature !== null);
+    this.hourlyTrend.hidden = values.length < 2;
+    if (this.hourlyTrend.hidden) return;
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    const span = high - low;
+    const plotWidth = 240;
+    const line = [];
+    const area = [];
+    let start = null;
+    let last = "";
+    for (const [index, temperature] of temps.entries()) {
+      const x = ((index * plotWidth) / (temps.length - 1)).toFixed(2);
+      if (temperature === null) {
+        if (start !== null) area.push(`L${last} 44H${start}Z`);
+        start = null;
+        continue;
+      }
+      const y =
+        span === 0 ? "22" : (38 - ((temperature - low) / span) * 32).toFixed(2);
+      const point = `${x} ${y}`;
+      if (start === null) {
+        start = x;
+        area.push(`M${point}`);
+        line.push(`M${point}`);
+      } else {
+        area.push(`L${point}`);
+        line.push(`L${point}`);
+      }
+      last = x;
+    }
+    if (start !== null) area.push(`L${last} 44H${start}Z`);
+    this.hourlyTrendArea.setAttribute("d", area.join(" "));
+    this.hourlyTrendLine.setAttribute("d", line.join(" "));
+    setText(
+      this.hourlyTrendRange,
+      t("weather.range", {
+        min: formatTemperature(low),
+        max: formatTemperature(high),
+      }),
+    );
+  }
+
+  /**
+   * @param {Forecast} forecast
+   * @param {string} placeId
+   */
+  renderDaily(forecast, placeId) {
     const days = forecast.daily;
     const today = days[0]?.date ?? "";
     const highs = days.map((day) => day.temperatureMax);
@@ -190,9 +244,22 @@ export class WeatherView {
     );
     const floor = Math.min(...values);
     const span = Math.max(...values) - floor || 1;
+    const opened =
+      this.dailyList.dataset.place === placeId
+        ? new Set(
+            [...this.dailyList.querySelectorAll("details[open]")].map((entry) =>
+              entry.getAttribute("data-date"),
+            ),
+          )
+        : new Set();
+    this.dailyList.dataset.place = placeId;
 
     const items = days.map((day) => {
       const item = createElement("li", "day");
+      const disclosure = createElement("details", "day-toggle");
+      disclosure.dataset.date = day.date;
+      disclosure.open = opened.has(day.date);
+      const summary = createElement("summary", "day-summary");
       const label = formatDayLabel(day.date, today, this.locale);
       const name = createElement("span", "day-name", label.name);
       name.append(createElement("span", "day-date", label.date));
@@ -209,14 +276,48 @@ export class WeatherView {
         bar.append(fill);
       }
 
-      item.append(
+      const minimum = createElement("span", "day-min");
+      minimum.append(
+        visuallyHidden(t("daily.minimum")),
+        formatTemperature(day.temperatureMin),
+      );
+      const maximum = createElement("span", "day-max");
+      maximum.append(
+        visuallyHidden(t("daily.maximum")),
+        formatTemperature(day.temperatureMax),
+      );
+      const arrow = createElement("span", "day-chevron");
+      arrow.setAttribute("aria-hidden", "true");
+      summary.append(
         name,
         createWeatherIcon(day.weatherCode, true, "day-icon"),
         precipitationChance(day.precipitationProbability, "day-pop"),
-        createElement("span", "day-min", formatTemperature(day.temperatureMin)),
+        minimum,
         bar,
-        createElement("span", "day-max", formatTemperature(day.temperatureMax)),
+        maximum,
+        arrow,
       );
+      const details = createElement("dl", "day-details");
+      for (const [term, value] of [
+        [
+          t("daily.condition"),
+          day.weatherCode === null
+            ? PLACEHOLDER
+            : describeWeather(day.weatherCode).label,
+        ],
+        [t("daily.uv"), formatUvIndex(day.uvIndexMax)],
+        [t("daily.sunrise"), formatLocalTime(day.sunrise)],
+        [t("daily.sunset"), formatLocalTime(day.sunset)],
+      ]) {
+        const entry = createElement("div");
+        entry.append(
+          createElement("dt", "", term),
+          createElement("dd", "", value),
+        );
+        details.append(entry);
+      }
+      disclosure.append(summary, details);
+      item.append(disclosure);
       return item;
     });
     this.dailyList.replaceChildren(...items);
@@ -224,6 +325,7 @@ export class WeatherView {
 
   /** Clears weather values after a failure with no data to fall back on. */
   renderUnavailable() {
+    this.hourlyTrend.hidden = true;
     this.conditionIcon.replaceChildren();
     setText(this.conditionText, t("weather.unavailable"));
     setText(this.temperature, `${PLACEHOLDER}°`);

@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-28
+
+### 修正
+
+- 裝置定位先抓新座標，遇到定位逾時或暫時失敗會改用一般精度重試。台北僅作暫時備援；恢復授權可自動重新定位。手動選定的城市不被覆蓋。
+
+### 變更
+
+- 改版為響應式天氣儀表板；手機單欄、桌面雙欄，7 日預報可展開細節。
+- 同一筆地名查詢只送一次，切換搜尋時取消過期請求；時鐘重用格式器，分頁隱藏時暫停更新。
+- 只請求畫面需要的 24 筆逐時資料，每日預報維持 7 天。
+- 新增長卷式儲存庫橫幅，不加入天氣頁面的載入資源。
+
+### 文件
+
+- 重整專案介紹、貢獻流程、架構說明與效能量測指南。
+
 ## [1.1.0] - 2026-11-20
 
 ### 新增
@@ -46,6 +63,7 @@
 - 新增嚴格的 Content Security Policy，移除所有行內腳本與樣式。
 - 送出的座標四捨五入至約 1 公里；不儲存裝置位置。
 
-[Unreleased]: https://github.com/xdxd-lab/time_weather/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/xdxd-lab/time_weather/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/xdxd-lab/time_weather/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/xdxd-lab/time_weather/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/xdxd-lab/time_weather/releases/tag/v1.0.0

@@ -77,7 +77,7 @@
 /**
  * @typedef {object} Preferences
  * @property {UnitSystem} units
- * @property {Place | null} place A saved place, or null to follow the device.
+ * @property {Place | null} place A saved search result, or null to follow the device.
  */
 
 export {};

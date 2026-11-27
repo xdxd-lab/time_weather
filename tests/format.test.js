@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   PLACEHOLDER,
   compassPoint,
+  dateTimeFormatter,
   daysBetween,
   formatClock,
   formatDayLabel,
@@ -115,6 +116,29 @@ describe("dates and times", () => {
       formatClock(instant, "zh-TW", "Asia/Taipei").date,
       /2026.*11.*19.*星期四/,
     );
+  });
+
+  it("updates the date across local midnight and zone changes", () => {
+    const before = new Date("2026-11-19T15:59:59Z");
+    const after = new Date("2026-11-19T16:00:00Z");
+    assert.match(formatClock(before, "zh-TW", "Asia/Taipei").date, /11月19日/);
+    const midnight = formatClock(after, "zh-TW", "Asia/Taipei");
+    assert.equal(midnight.time, "00:00:00");
+    assert.match(midnight.date, /11月20日.*星期五/);
+    assert.match(formatClock(after, "zh-TW", "UTC").date, /11月19日/);
+    assert.match(
+      formatClock(after, "en-US", "Asia/Taipei").date,
+      /November 20/,
+    );
+  });
+
+  it("bounds the formatter cache while retaining recent formatters", () => {
+    const original = dateTimeFormatter("en-US", { timeZone: "UTC" });
+    assert.equal(dateTimeFormatter("en-US", { timeZone: "UTC" }), original);
+    for (const zone of Intl.supportedValuesOf("timeZone").slice(0, 65)) {
+      dateTimeFormatter("en-US", { timeZone: zone });
+    }
+    assert.notEqual(dateTimeFormatter("en-US", { timeZone: "UTC" }), original);
   });
 
   it("falls back to the device zone for invalid time zones", () => {

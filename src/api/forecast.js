@@ -81,6 +81,7 @@ export function roundCoordinate(value) {
  * @property {number} longitude
  * @property {UnitSystem} units
  * @property {number} [forecastDays] 1–16, defaults to 7.
+ * @property {number} [hourlySlots] Hourly entries to request, defaults to 24.
  * @property {string} [baseUrl] Override for a proxy or commercial endpoint.
  */
 
@@ -89,7 +90,13 @@ export function roundCoordinate(value) {
  * @returns {URL}
  */
 export function buildForecastUrl(query) {
-  const { latitude, longitude, units, forecastDays = 7 } = query;
+  const {
+    latitude,
+    longitude,
+    units,
+    forecastDays = 7,
+    hourlySlots = 24,
+  } = query;
   const url = new URL(query.baseUrl ?? DEFAULT_FORECAST_URL);
   const params = url.searchParams;
   params.set("latitude", roundCoordinate(latitude));
@@ -99,6 +106,9 @@ export function buildForecastUrl(query) {
   params.set("daily", DAILY_FIELDS.join(","));
   params.set("timezone", "auto");
   params.set("forecast_days", String(forecastDays));
+  // Open-Meteo counts the current hour as the first slot. Limit the hourly
+  // response independently so the daily panel still receives the full week.
+  params.set("forecast_hours", String(hourlySlots));
   for (const [key, value] of Object.entries(UNIT_PARAMS[units])) {
     params.set(key, value);
   }
@@ -259,6 +269,7 @@ export async function fetchForecast(position, options) {
     longitude: position.longitude,
     units: options.units,
     forecastDays: options.forecastDays,
+    hourlySlots: options.hourlySlots,
     baseUrl: options.baseUrl,
   });
   const data = await fetchJson(url, {

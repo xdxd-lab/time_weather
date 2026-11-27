@@ -19,12 +19,12 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="theme-color"
-      content="#dff3ff"
+      content="#f3f4f0"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#111a2e"
+      content="#111c23"
       media="(prefers-color-scheme: dark)"
     />
     <meta property="og:type" content="website" />
@@ -35,7 +35,10 @@
       property="og:description"
       content="即時時鐘、目前天氣、24 小時與 7 日預報。免安裝，打開即用。"
     />
-    <meta property="og:url" content="https://xdxd-lab.github.io/time_weather/" />
+    <meta
+      property="og:url"
+      content="https://xdxd-lab.github.io/time_weather/"
+    />
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="assets/css/app.css" />
@@ -55,7 +58,7 @@
         />
         <div>
           <h1 class="brand-name">何妨吟嘯且徐行</h1>
-          <p class="brand-sub">Time Weather</p>
+          <p class="brand-sub">時間與天氣</p>
         </div>
       </div>
 
@@ -90,7 +93,11 @@
               role="listbox"
               aria-label="搜尋結果"
             ></ul>
-            <p id="search-message" class="search-message" aria-live="polite"></p>
+            <p
+              id="search-message"
+              class="search-message"
+              aria-live="polite"
+            ></p>
           </div>
         </form>
 
@@ -136,64 +143,56 @@
         aria-labelledby="place-name"
         aria-busy="true"
       >
-        <p class="eyebrow">
-          <span id="clock-label">現在時間</span>
-          <span id="clock-zone" class="zone"></span>
-        </p>
-        <p id="clock-time" class="clock-time">--:--:--</p>
-        <p id="clock-date" class="clock-date">讀取中…</p>
-
-        <div class="divider" role="presentation"></div>
+        <div class="hero-art" aria-hidden="true">
+          <svg class="hero-horizon" viewBox="0 0 440 300" fill="none">
+            <circle cx="298" cy="130" r="74" />
+            <circle cx="298" cy="130" r="96" />
+            <circle cx="298" cy="130" r="118" />
+            <path
+              d="M298 0v260M156 130h284M0 218c80 8 94-70 180-64 55 5 77 49 140 54 58 5 95-22 120-34M0 242c80-2 119-52 188-52 74 0 109 44 178 34 31-4 54-18 74-27M0 274c78 1 120-34 186-39 79-6 113 31 172 25 39-3 58-8 82-18"
+            />
+            <path
+              class="hero-stars"
+              d="M189 79h8m-4-4v8m179-72h8m-4-4v8m28 150h8m-4-4v8m-246-17h4m-2-2v4"
+            />
+          </svg>
+          <span id="condition-icon" class="condition-icon"></span>
+        </div>
 
         <div class="now">
           <div class="now-main">
+            <p class="hero-kicker"><span></span>目前天氣</p>
             <h2 id="place-name" class="place-name">正在取得位置…</h2>
             <p id="place-region" class="place-region"></p>
-            <p class="condition">
-              <span id="condition-icon" class="condition-icon"></span>
-              <span id="condition-text">讀取天氣中…</span>
-            </p>
-          </div>
-          <div class="now-temperature">
-            <p id="temperature" class="temperature">--°</p>
-            <p id="temperature-range" class="temperature-range"></p>
+            <div class="now-reading">
+              <p id="temperature" class="temperature">--°</p>
+              <div class="now-caption">
+                <p id="condition-text" class="condition">讀取天氣中…</p>
+                <p id="temperature-range" class="temperature-range"></p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <dl class="details">
-          <div class="detail">
-            <dt>體感溫度</dt>
-            <dd id="detail-feels">--</dd>
+        <div class="clock-panel">
+          <svg
+            class="clock-glyph"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+          >
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M12 7.5v5l3 2" />
+          </svg>
+          <div>
+            <p class="eyebrow">
+              <span id="clock-label">現在時間</span>
+              <span id="clock-zone" class="zone"></span>
+            </p>
+            <p id="clock-time" class="clock-time">--:--:--</p>
           </div>
-          <div class="detail">
-            <dt>相對濕度</dt>
-            <dd id="detail-humidity">--</dd>
-          </div>
-          <div class="detail">
-            <dt>風速與風向</dt>
-            <dd id="detail-wind">--</dd>
-          </div>
-          <div class="detail">
-            <dt>目前降水量</dt>
-            <dd id="detail-precipitation">--</dd>
-          </div>
-          <div class="detail">
-            <dt>紫外線指數</dt>
-            <dd id="detail-uv">--</dd>
-          </div>
-          <div class="detail">
-            <dt>海平面氣壓</dt>
-            <dd id="detail-pressure">--</dd>
-          </div>
-          <div class="detail">
-            <dt>日出</dt>
-            <dd id="detail-sunrise">--</dd>
-          </div>
-          <div class="detail">
-            <dt>日落</dt>
-            <dd id="detail-sunset">--</dd>
-          </div>
-        </dl>
+          <p id="clock-date" class="clock-date">讀取中…</p>
+        </div>
 
         <div class="status-row">
           <p id="status" class="status" role="status" data-tone="info">
@@ -210,20 +209,190 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="hourly-title">
-        <h2 id="hourly-title" class="card-title">未來 24 小時</h2>
+      <section class="card hourly-card" aria-labelledby="hourly-title">
+        <div class="card-heading">
+          <div>
+            <p class="section-tag">逐時</p>
+            <h2 id="hourly-title" class="card-title">未來 24 小時</h2>
+          </div>
+          <p id="hourly-hint" class="card-hint">
+            左右滑動 <span aria-hidden="true">↔</span>
+          </p>
+        </div>
         <ol
           id="hourly-list"
           class="hourly"
           tabindex="0"
           aria-labelledby="hourly-title"
+          aria-describedby="hourly-hint"
         >
           <li class="list-placeholder">載入中…</li>
         </ol>
+        <div id="hourly-trend" class="hourly-trend" hidden>
+          <p class="hourly-trend-heading">
+            <span>氣溫趨勢</span><span id="hourly-trend-range"></span>
+          </p>
+          <svg
+            class="hourly-trend-chart"
+            viewBox="0 0 240 44"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            fill="none"
+          >
+            <path class="trend-grid" d="M0 10h240M0 22h240M0 34h240" />
+            <path id="hourly-trend-area" class="trend-area" />
+            <path id="hourly-trend-line" class="trend-line" />
+          </svg>
+        </div>
       </section>
 
-      <section class="card" aria-labelledby="daily-title">
-        <h2 id="daily-title" class="card-title">7 日預報</h2>
+      <section class="card conditions-card" aria-labelledby="conditions-title">
+        <div class="card-heading">
+          <div>
+            <p class="section-tag">實況</p>
+            <h2 id="conditions-title" class="card-title">天氣詳情</h2>
+          </div>
+          <p class="card-hint">目前觀測・日照資訊</p>
+        </div>
+        <dl class="details">
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path d="M15 14V6a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0Z" />
+                <path d="M12 10v7" />
+              </svg>
+              <span>體感溫度</span>
+            </dt>
+            <dd id="detail-feels">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path d="M12 3 6 11a7 7 0 1 0 12 0Z" />
+                <path d="M9 15a3 3 0 0 0 3 3" />
+              </svg>
+              <span>相對濕度</span>
+            </dt>
+            <dd id="detail-humidity">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path
+                  d="M3 9h12a2.5 2.5 0 1 0-2.5-2.5M3 13h16a2 2 0 1 1-2 2M3 17h7"
+                />
+              </svg>
+              <span>風速與風向</span>
+            </dt>
+            <dd id="detail-wind">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path
+                  d="M7 14a4 4 0 1 1 1-7 5 5 0 0 1 9 2 2.5 2.5 0 0 1 0 5Z"
+                />
+                <path d="m10 17-1 3m6-3-1 3" />
+              </svg>
+              <span>目前降水量</span>
+            </dt>
+            <dd id="detail-precipitation">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <circle cx="12" cy="12" r="4" />
+                <path
+                  d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"
+                />
+              </svg>
+              <span>紫外線指數</span>
+            </dt>
+            <dd id="detail-uv">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path d="M5 18a9 9 0 1 1 14 0H5Z" />
+                <path d="m12 14 3-4M7 15l2-1m10 1-2-1M12 8v1" />
+              </svg>
+              <span>海平面氣壓</span>
+            </dt>
+            <dd id="detail-pressure">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path
+                  d="M3 18h18M5 21h14M7 14a5 5 0 0 1 10 0m-5-5V3m-2 2 2-2 2 2"
+                />
+              </svg>
+              <span>日出</span>
+            </dt>
+            <dd id="detail-sunrise">--</dd>
+          </div>
+          <div class="detail">
+            <dt>
+              <svg
+                class="metric-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+              >
+                <path
+                  d="M3 18h18M5 21h14M7 14a5 5 0 0 1 10 0m-5-11v6m-2-2 2 2 2-2"
+                />
+              </svg>
+              <span>日落</span>
+            </dt>
+            <dd id="detail-sunset">--</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card daily-card" aria-labelledby="daily-title">
+        <div class="card-heading">
+          <div>
+            <p class="section-tag">展望</p>
+            <h2 id="daily-title" class="card-title">7 日預報</h2>
+          </div>
+          <p class="card-hint">點選日期看詳情</p>
+        </div>
         <ol id="daily-list" class="daily">
           <li class="list-placeholder">載入中…</li>
         </ol>
@@ -236,11 +405,15 @@
         <span class="poem-source">—— 蘇軾〈定風波〉</span>
       </p>
       <p class="attribution">
-        天氣資料：<a href="https://open-meteo.com/" rel="noopener">Weather data by Open-Meteo.com</a>（<a
+        天氣資料：<a href="https://open-meteo.com/" rel="noopener"
+          >Weather data by Open-Meteo.com</a
+        >（<a
           href="https://creativecommons.org/licenses/by/4.0/"
           rel="noopener license"
           >CC BY 4.0</a
-        >）・地點資料：<a href="https://www.geonames.org/" rel="noopener">GeoNames</a>
+        >）・地點資料：<a href="https://www.geonames.org/" rel="noopener"
+          >GeoNames</a
+        >
       </p>
       <noscript>
         <p class="noscript">此頁面需要啟用 JavaScript 才能顯示時間與天氣。</p>
